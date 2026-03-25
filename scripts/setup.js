@@ -63,11 +63,11 @@ async function main() {
   const stripePublishableKey = await question('Stripe Publishable Key (pk_test_...): ');
 
   console.log('\n');
-  log('Step 3: OpenAI Configuration', 'green');
+  log('Step 3: Gemini Configuration', 'green');
   log('--------------------------------', 'green');
-  console.log('Go to platform.openai.com > API Keys\n');
+  console.log('Go to aistudio.google.com > API Keys\n');
 
-  const openaiApiKey = await question('OpenAI API Key (sk-...): ');
+  const geminiApiKey = await question('Gemini API Key: ');
 
   // Create .env.local file
   const envContent = `# Supabase
@@ -85,8 +85,8 @@ STRIPE_STARTER_PRICE_ID=price_starter_placeholder
 STRIPE_PRO_PRICE_ID=price_pro_placeholder
 STRIPE_SCALE_PRICE_ID=price_scale_placeholder
 
-# OpenAI
-OPENAI_API_KEY=${openaiApiKey}
+# Gemini
+GEMINI_API_KEY=${geminiApiKey}
 
 # App URL (update after deployment)
 NEXT_PUBLIC_APP_URL=http://localhost:3000

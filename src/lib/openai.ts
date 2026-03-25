@@ -1,4 +1,4 @@
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export interface RepurposeInput {
   content: string
@@ -27,9 +27,8 @@ Guidelines:
 Always maintain the core message and value of the original content.`
 
 export async function repurposeContent(input: RepurposeInput): Promise<RepurposeOutput> {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
   const { content, platforms, tone } = input
 
@@ -54,13 +53,9 @@ export async function repurposeContent(input: RepurposeInput): Promise<Repurpose
     }
   }).join('\n')
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `${toneInstructions[tone]}
+  const prompt = `${SYSTEM_PROMPT}
+
+${toneInstructions[tone]}
 
 Please repurpose the following content:
 
@@ -72,28 +67,38 @@ Create the following:
 ${platformInstructions}
 Also extract 2-3 memorable quotes from the content.
 
-Respond in JSON format:
+Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
 {
   "twitter_thread": ["tweet 1", "tweet 2", ...],
   "linkedin": "linkedin post content",
   "instagram": "instagram caption with #hashtags",
   "summary": "2-3 sentence summary",
   "quotes": ["quote 1", "quote 2"]
-}`,
-      },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.7,
-    max_tokens: 2000,
-  })
+}`
 
-  const result = JSON.parse(response.choices[0].message.content || '{}')
+  const result = await model.generateContent(prompt)
+  const response = result.response
+  const text = response.text()
+
+  // Clean up the response - remove markdown code blocks if present
+  let cleanedText = text.trim()
+  if (cleanedText.startsWith('```json')) {
+    cleanedText = cleanedText.slice(7)
+  } else if (cleanedText.startsWith('```')) {
+    cleanedText = cleanedText.slice(3)
+  }
+  if (cleanedText.endsWith('```')) {
+    cleanedText = cleanedText.slice(0, -3)
+  }
+  cleanedText = cleanedText.trim()
+
+  const parsed = JSON.parse(cleanedText)
 
   return {
-    twitter_thread: result.twitter_thread || [],
-    linkedin: result.linkedin || '',
-    instagram: result.instagram || '',
-    summary: result.summary || '',
-    quotes: result.quotes || [],
+    twitter_thread: parsed.twitter_thread || [],
+    linkedin: parsed.linkedin || '',
+    instagram: parsed.instagram || '',
+    summary: parsed.summary || '',
+    quotes: parsed.quotes || [],
   }
 }

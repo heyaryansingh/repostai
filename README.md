@@ -42,7 +42,7 @@ npx vercel
 - Accounts at (all have free tiers):
   - [Supabase](https://supabase.com) - Database & Auth
   - [Stripe](https://stripe.com) - Payments
-  - [OpenAI](https://platform.openai.com) - AI
+  - [Google AI Studio](https://aistudio.google.com) - AI (Gemini)
   - [Vercel](https://vercel.com) - Hosting
 
 ## API Usage
@@ -85,7 +85,7 @@ curl -X POST https://your-domain.vercel.app/api/v1/repurpose \
 - **Framework**: Next.js 14
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **AI**: OpenAI GPT-4o-mini
+- **AI**: Google Gemini 1.5 Flash
 - **Payments**: Stripe
 - **Hosting**: Vercel
 - **Styling**: Tailwind CSS
@@ -114,7 +114,7 @@ Copy `.env.example` to `.env.local` and fill in:
 - `STRIPE_SECRET_KEY` - Stripe secret key
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret
 - `STRIPE_*_PRICE_ID` - Stripe price IDs for each tier
-- `OPENAI_API_KEY` - OpenAI API key
+- `GEMINI_API_KEY` - Google Gemini API key
 - `NEXT_PUBLIC_APP_URL` - Your deployed URL
 
 ## License
