@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { TIER_LIMITS } from '@/lib/constants'
 import type { SubscriptionTier } from '@/lib/constants'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const authResult = await validateApiKey(request.headers.get('authorization'))
