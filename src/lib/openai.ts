@@ -1,16 +1,38 @@
+/**
+ * @fileoverview Content repurposing service using Google Gemini AI.
+ * Transforms long-form content into platform-optimized social media posts.
+ * @module lib/openai
+ */
+
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+/** Supported social media platforms for content repurposing */
+export type Platform = 'twitter' | 'linkedin' | 'instagram' | 'summary'
+
+/** Supported content tone options */
+export type ToneOption = 'professional' | 'casual' | 'witty'
+
+/** Input parameters for content repurposing */
 export interface RepurposeInput {
+  /** Original long-form content to repurpose */
   content: string
-  platforms: ('twitter' | 'linkedin' | 'instagram' | 'summary')[]
-  tone: 'professional' | 'casual' | 'witty'
+  /** Target platforms for repurposed content */
+  platforms: Platform[]
+  /** Desired tone for the output content */
+  tone: ToneOption
 }
 
+/** Output from content repurposing containing platform-specific content */
 export interface RepurposeOutput {
+  /** Array of tweets for a Twitter thread */
   twitter_thread: string[]
+  /** LinkedIn post content */
   linkedin: string
+  /** Instagram caption with hashtags */
   instagram: string
+  /** Brief 2-3 sentence summary */
   summary: string
+  /** Memorable quotes extracted from the content */
   quotes: string[]
 }
 
@@ -26,6 +48,12 @@ Guidelines:
 
 Always maintain the core message and value of the original content.`
 
+/**
+ * Repurposes long-form content into platform-optimized social media posts.
+ * @param input - The content and configuration for repurposing
+ * @returns Platform-specific content including tweets, LinkedIn post, Instagram caption, and quotes
+ * @throws {Error} When AI generation or JSON parsing fails
+ */
 export async function repurposeContent(input: RepurposeInput): Promise<RepurposeOutput> {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })

@@ -1,7 +1,14 @@
+/**
+ * @fileoverview API key authentication and validation utilities.
+ * Handles secure API key validation, hashing, and user lookup.
+ * @module lib/auth
+ */
+
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import type { User } from '@/types'
 
+/** Result of an authentication attempt */
 export interface AuthResult {
   success: boolean
   user?: User
@@ -79,12 +86,15 @@ export async function validateApiKey(authHeader: string | null): Promise<AuthRes
   }
 }
 
+/**
+ * Generates a new API key with its hash and display prefix.
+ * @returns Object containing the full key, SHA-256 hash, and truncated prefix for display
+ */
 export function generateApiKey(): { key: string; hash: string; prefix: string } {
-  const crypto = require('crypto')
-  const randomBytes = crypto.randomBytes(24).toString('hex')
-  const key = `rp_live_${randomBytes}`
+  const keyBytes = randomBytes(24).toString('hex')
+  const key = `rp_live_${keyBytes}`
   const hash = createHash('sha256').update(key).digest('hex')
-  const prefix = `rp_live_${randomBytes.slice(0, 8)}...`
+  const prefix = `rp_live_${keyBytes.slice(0, 8)}...`
 
   return { key, hash, prefix }
 }
