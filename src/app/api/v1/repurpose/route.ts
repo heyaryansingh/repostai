@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
         requests_limit: limit,
       },
     })
-  } catch (error) {
-    console.error('Repurpose error:', error)
+  } catch (error: unknown) {
+    console.error('Repurpose error:', error instanceof Error ? error.message : error)
     return NextResponse.json(
       {
         error: {
