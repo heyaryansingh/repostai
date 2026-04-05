@@ -1,9 +1,34 @@
+/**
+ * @fileoverview Stripe Webhook Handler - Processes subscription lifecycle events.
+ * @module app/api/webhooks/stripe
+ *
+ * Handles the following Stripe events:
+ * - checkout.session.completed: New subscription created
+ * - customer.subscription.updated: Subscription plan changed or status updated
+ * - customer.subscription.deleted: Subscription canceled
+ *
+ * Security:
+ * - Validates webhook signature using STRIPE_WEBHOOK_SECRET
+ * - Rejects requests with invalid signatures
+ *
+ * @see https://stripe.com/docs/webhooks
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Stripe from 'stripe'
 
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/webhooks/stripe - Handle Stripe webhook events.
+ *
+ * Processes subscription events and updates user records in Supabase.
+ * Verifies webhook signature before processing any events.
+ *
+ * @param request - The incoming webhook request from Stripe
+ * @returns JSON acknowledgment or error response
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')!
 

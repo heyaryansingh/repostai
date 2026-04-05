@@ -1,3 +1,19 @@
+/**
+ * @fileoverview Usage API endpoint - Returns current usage statistics for authenticated users.
+ * @module app/api/v1/usage
+ *
+ * Provides real-time usage metrics including:
+ * - Current subscription tier
+ * - Requests used in the current billing period
+ * - Request limits based on tier
+ * - Current billing period (YYYY-MM format)
+ *
+ * @example
+ * ```bash
+ * curl -H "Authorization: Bearer <api_key>" https://api.example.com/api/v1/usage
+ * ```
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -6,7 +22,23 @@ import type { SubscriptionTier } from '@/lib/constants'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/v1/usage - Retrieve current usage statistics.
+ *
+ * @param request - The incoming Next.js request object
+ * @returns JSON response with usage data or error
+ *
+ * @example Response
+ * ```json
+ * {
+ *   "tier": "pro",
+ *   "requests_used": 150,
+ *   "requests_limit": 1000,
+ *   "billing_period": "2026-04"
+ * }
+ * ```
+ */
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const authResult = await validateApiKey(request.headers.get('authorization'))
 
