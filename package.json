@@ -2,11 +2,12 @@
   "name": "repostai",
   "version": "1.0.0",
   "private": true,
+  "description": "Turn long-form content into platform-specific social posts with one API call.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "setup": "node scripts/setup.js"
   },
   "dependencies": {

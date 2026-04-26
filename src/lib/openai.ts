@@ -7,7 +7,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 /** Supported social media platforms for content repurposing */
-export type Platform = 'twitter' | 'linkedin' | 'instagram' | 'summary'
+export type Platform = 'twitter' | 'linkedin' | 'instagram' | 'facebook' | 'threads' | 'tiktok' | 'summary'
 
 /** Supported content tone options */
 export type ToneOption = 'professional' | 'casual' | 'witty'
