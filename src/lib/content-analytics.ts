@@ -397,6 +397,9 @@ export function estimateEngagement(
     twitter: { min: 100, max: 500 },
     linkedin: { min: 500, max: 1500 },
     instagram: { min: 100, max: 300 },
+    facebook: { min: 200, max: 800 },
+    threads: { min: 100, max: 500 },
+    tiktok: { min: 50, max: 150 },
     summary: { min: 50, max: 150 },
   };
 

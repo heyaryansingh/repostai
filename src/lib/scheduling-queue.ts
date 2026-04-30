@@ -128,6 +128,9 @@ const OPTIMAL_POSTING_WINDOWS: Record<Platform, PostingWindow[]> = {
     { startHour: 12, endHour: 15, days: [0, 6], priority: 90 }, // Weekend afternoon
     { startHour: 7, endHour: 9, days: [1, 2, 3, 4, 5], priority: 75 }, // Morning commute
   ],
+  summary: [
+    { startHour: 9, endHour: 17, days: [1, 2, 3, 4, 5], priority: 80 }, // Business hours
+  ],
 };
 
 /**
