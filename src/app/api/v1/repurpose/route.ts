@@ -48,14 +48,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse request body
-    const body = await request.json()
+    // Parse request body with validation
+    let body: any
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'invalid_json',
+            message: 'Request body must be valid JSON',
+          },
+        },
+        { status: 400 }
+      )
+    }
+
     const {
       content,
       url,
       platforms = ['twitter', 'linkedin', 'instagram', 'summary'],
       tone = 'professional',
     } = body
+
+    // Validate platforms array
+    const validPlatforms = ['twitter', 'linkedin', 'instagram', 'facebook', 'summary']
+    const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p))
+
+    if (invalidPlatforms.length > 0) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'invalid_platforms',
+            message: `Invalid platforms: ${invalidPlatforms.join(', ')}. Valid: ${validPlatforms.join(', ')}`,
+          },
+        },
+        { status: 400 }
+      )
+    }
+
+    // Validate tone
+    const validTones = ['professional', 'casual', 'enthusiastic', 'informative', 'humorous']
+    if (!validTones.includes(tone)) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'invalid_tone',
+            message: `Invalid tone: ${tone}. Valid: ${validTones.join(', ')}`,
+          },
+        },
+        { status: 400 }
+      )
+    }
 
     // Validate input
     let textContent = content
