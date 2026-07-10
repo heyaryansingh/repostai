@@ -7,6 +7,20 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 /**
+ * Validates that a post-login redirect target is a safe, same-origin
+ * relative path. Rejects absolute URLs, protocol-relative URLs (`//host`),
+ * and any other value that could be used for an open-redirect attack.
+ */
+function sanitizeNextPath(next: string | null): string {
+  const fallback = '/dashboard'
+  if (!next) return fallback
+  if (!next.startsWith('/') || next.startsWith('//')) return fallback
+  // Reject values that browsers would still treat as a scheme-relative URL.
+  if (next.includes('\\') || /^\/\s*\//.test(next)) return fallback
+  return next
+}
+
+/**
  * Handles OAuth callback by exchanging the auth code for a session.
  * Redirects to dashboard on success or login page with error on failure.
  *
@@ -16,7 +30,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = sanitizeNextPath(searchParams.get('next'))
 
   if (!code) {
     console.warn('Auth callback received without code parameter')
