@@ -72,6 +72,18 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate platforms array
+    if (!Array.isArray(platforms)) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'invalid_platforms',
+            message: 'platforms must be an array of strings',
+          },
+        },
+        { status: 400 }
+      )
+    }
+
     const validPlatforms = ['twitter', 'linkedin', 'instagram', 'facebook', 'summary']
     const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p))
 
@@ -116,7 +128,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!textContent || textContent.length < 100) {
+    if (typeof textContent !== 'string' || textContent.length < 100) {
       return NextResponse.json(
         {
           error: {
