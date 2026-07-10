@@ -31,6 +31,22 @@ const SPAM_PATTERNS = [
   /100% guaranteed/gi,
 ];
 
+const SEVERITY_RANK: Record<ModerationResult['severity'], number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
+};
+
+// Per-category severity. Each flagged category contributes its own
+// severity, and the result reflects the highest one triggered instead
+// of always collapsing to 'low'.
+const CATEGORY_SEVERITY: Record<string, ModerationResult['severity']> = {
+  spam_patterns: 'medium',
+  excessive_caps: 'low',
+  excessive_punctuation: 'low',
+};
+
 export function moderateContent(
   content: string,
   config: Partial<ModerationConfig> = {}
@@ -39,25 +55,35 @@ export function moderateContent(
   const flaggedCategories: string[] = [];
   let maxSeverity: ModerationResult['severity'] = 'low';
 
+  const flag = (category: string) => {
+    flaggedCategories.push(category);
+    const severity = CATEGORY_SEVERITY[category] ?? 'low';
+    if (SEVERITY_RANK[severity] > SEVERITY_RANK[maxSeverity]) {
+      maxSeverity = severity;
+    }
+  };
+
   if (fullConfig.check_spam_patterns) {
     for (const pattern of SPAM_PATTERNS) {
       if (pattern.test(content)) {
-        flaggedCategories.push('spam_patterns');
-        maxSeverity = 'low';
+        flag('spam_patterns');
         break;
       }
     }
   }
 
-  const capsRatio = (content.match(/[A-Z]/g) || []).length / content.length;
+  // Ratio of uppercase letters among alphabetic characters only, so
+  // spaces/digits/punctuation don't dilute short all-caps phrases.
+  const letters = content.match(/[A-Za-z]/g) || [];
+  const upperLetters = content.match(/[A-Z]/g) || [];
+  const capsRatio = letters.length > 0 ? upperLetters.length / letters.length : 0;
   if (capsRatio > 0.5 && content.length > 20) {
-    flaggedCategories.push('excessive_caps');
-    maxSeverity = 'low';
+    flag('excessive_caps');
   }
 
   const exclamationCount = (content.match(/!/g) || []).length;
   if (exclamationCount > 3) {
-    flaggedCategories.push('excessive_punctuation');
+    flag('excessive_punctuation');
   }
 
   const isSafe = flaggedCategories.length === 0;
