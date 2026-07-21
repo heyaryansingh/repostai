@@ -33,11 +33,13 @@ export function hashContent(content: string): string {
  * Calculate similarity between two content strings (0-1)
  */
 export function calculateSimilarity(content1: string, content2: string): number {
-  const words1 = new Set(content1.toLowerCase().split(/\s+/));
-  const words2 = new Set(content2.toLowerCase().split(/\s+/));
+  const words1 = new Set(content1.toLowerCase().split(/\s+/).filter(Boolean));
+  const words2 = new Set(content2.toLowerCase().split(/\s+/).filter(Boolean));
 
   const intersection = new Set([...words1].filter(x => words2.has(x)));
   const union = new Set([...words1, ...words2]);
+
+  if (union.size === 0) return 1;
 
   return intersection.size / union.size;
 }
