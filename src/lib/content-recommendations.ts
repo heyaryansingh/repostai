@@ -295,7 +295,7 @@ export class ContentRecommendationEngine {
     for (let i = 0; i < postsPerWeek; i++) {
       // Distribute across best days and times
       const dayIndex = i % 7;
-      const bestHourForDay = timingAnalysis.hoursByDay[dayIndex] || 12;
+      const bestHourForDay = timingAnalysis.hoursByDay[dayIndex] ?? 12;
 
       suggestions.push({
         dayOfWeek: dayIndex,
@@ -378,7 +378,7 @@ export class ContentRecommendationEngine {
   private analyzePostingTimes() {
     const dayScores: Record<number, number[]> = {};
     const hourScores: Record<number, number[]> = {};
-    const hoursByDay: Record<number, number> = {};
+    const dayHourScores: Record<number, Record<number, number[]>> = {};
 
     const baseline = this.calculateBaselineEngagement();
 
@@ -390,9 +390,27 @@ export class ContentRecommendationEngine {
 
       if (!dayScores[day]) dayScores[day] = [];
       if (!hourScores[hour]) hourScores[hour] = [];
+      if (!dayHourScores[day]) dayHourScores[day] = {};
+      if (!dayHourScores[day][hour]) dayHourScores[day][hour] = [];
 
       dayScores[day].push(score);
       hourScores[hour].push(score);
+      dayHourScores[day][hour].push(score);
+    }
+
+    // Best-performing hour per weekday (highest average score)
+    const hoursByDay: Record<number, number> = {};
+    for (const [day, hours] of Object.entries(dayHourScores)) {
+      let bestHourOfDay = 12;
+      let bestAvg = -Infinity;
+      for (const [hour, scores] of Object.entries(hours)) {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        if (avg > bestAvg) {
+          bestAvg = avg;
+          bestHourOfDay = parseInt(hour);
+        }
+      }
+      hoursByDay[parseInt(day)] = bestHourOfDay;
     }
 
     // Find best day
