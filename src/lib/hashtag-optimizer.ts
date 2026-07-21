@@ -50,11 +50,11 @@ export interface HashtagResult {
 
 // Platform-specific hashtag limits and best practices
 const PLATFORM_LIMITS = {
-  twitter: { max: 2, optimal: 1-2, strategy: "quality_over_quantity" },
-  instagram: { max: 30, optimal: 5-10, strategy: "mix_popular_niche" },
-  linkedin: { max: 3, optimal: 1-3, strategy: "professional_only" },
-  tiktok: { max: 5, optimal: 3-5, strategy: "trending_first" },
-  facebook: { max: 2, optimal: 1-2, strategy: "minimal_use" },
+  twitter: { max: 2, optimal: 2, strategy: "quality_over_quantity" },
+  instagram: { max: 30, optimal: 8, strategy: "mix_popular_niche" },
+  linkedin: { max: 3, optimal: 2, strategy: "professional_only" },
+  tiktok: { max: 5, optimal: 4, strategy: "trending_first" },
+  facebook: { max: 2, optimal: 1, strategy: "minimal_use" },
 } as const;
 
 // Common banned/restricted hashtags (sample list - expand as needed)
