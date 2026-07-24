@@ -239,9 +239,13 @@ export class BrandVoiceChecker {
       contentLower.includes(kw.toLowerCase())
     );
 
-    const usageRate = keywordsUsed.length / this.profile.brandKeywords.length;
+    const usageRate = this.profile.brandKeywords.length > 0
+      ? keywordsUsed.length / this.profile.brandKeywords.length
+      : 0.5;
 
-    if (usageRate === 0) {
+    if (this.profile.brandKeywords.length === 0) {
+      // No brand keywords configured; nothing to score against.
+    } else if (usageRate === 0) {
       issues.push('No brand keywords found in content');
       suggestions.push(`Consider using brand keywords: ${this.profile.brandKeywords.slice(0, 3).join(', ')}`);
     } else if (usageRate < 0.3) {
