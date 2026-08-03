@@ -107,7 +107,18 @@ export async function createOrGetCustomer(
   })
 
   if (customers.data.length > 0) {
-    return customers.data[0].id
+    const existing = customers.data[0]
+
+    // The webhook resolves the Supabase user from this metadata, so a customer
+    // created outside this helper has to be backfilled or its events cannot be
+    // matched to an account.
+    if (existing.metadata?.supabase_user_id !== userId) {
+      await stripe.customers.update(existing.id, {
+        metadata: { ...existing.metadata, supabase_user_id: userId },
+      })
+    }
+
+    return existing.id
   }
 
   // Create new customer
