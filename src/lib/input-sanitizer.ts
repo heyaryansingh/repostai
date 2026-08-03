@@ -40,69 +40,170 @@ export function sanitizeHTML(
 ): SanitizationResult {
   const removedPatterns: string[] = [];
   const warnings: string[] = [];
-  let sanitized = input;
   let changed = false;
 
-  // Remove script tags and content
-  const scriptPattern = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
-  if (scriptPattern.test(sanitized)) {
-    sanitized = sanitized.replace(scriptPattern, '');
-    removedPatterns.push('script tags');
+  const allowed = new Set(allowedTags.map((t) => t.toLowerCase()));
+  const noteRemoval = (pattern: string) => {
+    if (!removedPatterns.includes(pattern)) removedPatterns.push(pattern);
     changed = true;
+  };
+
+  // Drop the contents of tags whose bodies are not markup, so removing the
+  // wrapper does not promote the body to visible text or live script.
+  const containerPattern =
+    /<(script|style|iframe|object|embed|noscript|template)\b[\s\S]*?(?:<\/\1\s*>|$)/gi;
+
+  // Elements are rebuilt from scratch rather than pattern-matched, so this
+  // matches a whole tag and captures the name and raw attribute text.
+  const tagPattern = /<\s*(\/?)\s*([a-z][a-z0-9]*)\b([^>]*)>/gi;
+
+  let sanitized = input;
+
+  // A single pass lets a nested tag reassemble itself out of the leftovers:
+  // stripping the inner tag of `<scr<script>ipt>` yields a live `<script>`.
+  // Re-run until the output stops changing.
+  for (let pass = 0; pass < MAX_SANITIZE_PASSES; pass++) {
+    const before = sanitized;
+
+    sanitized = sanitized.replace(containerPattern, (_match, tag: string) => {
+      noteRemoval(`<${tag.toLowerCase()}> tags`);
+      return '';
+    });
+
+    sanitized = sanitized.replace(
+      tagPattern,
+      (_match, closing: string, rawTag: string, rawAttrs: string) => {
+        const tag = rawTag.toLowerCase();
+        if (!allowed.has(tag)) {
+          noteRemoval(`<${tag}> tag`);
+          return '';
+        }
+        if (closing) return `${TAG_OPEN}/${tag}${TAG_CLOSE}`;
+
+        // Allowlist attributes instead of blocklisting dangerous ones. The
+        // previous event-handler pattern required quoted values, so
+        // `<a href="#" onclick=alert(1)>` passed through untouched on a tag
+        // that was itself allowed.
+        const safeAttrs = collectSafeAttributes(tag, rawAttrs, noteRemoval);
+        const body = safeAttrs ? `${tag} ${safeAttrs}` : tag;
+        return `${TAG_OPEN}${body}${TAG_CLOSE}`;
+      }
+    );
+
+    if (sanitized === before) break;
   }
 
-  // Remove event handlers (onclick, onerror, etc.)
-  const eventPattern = /\s*on\w+\s*=\s*["'][^"']*["']/gi;
-  if (eventPattern.test(sanitized)) {
-    sanitized = sanitized.replace(eventPattern, '');
-    removedPatterns.push('event handlers');
-    changed = true;
+  // Any angle bracket still literal at this point is not part of a tag we
+  // approved; escape it so it cannot start one downstream. Approved tags
+  // are held as placeholders until after this step.
+  if (sanitized.includes('<') || sanitized.includes('>')) {
+    sanitized = sanitized.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    noteRemoval('stray angle brackets');
   }
 
-  // Remove javascript: protocol
-  const jsProtocol = /javascript:/gi;
-  if (jsProtocol.test(sanitized)) {
-    sanitized = sanitized.replace(jsProtocol, '');
-    removedPatterns.push('javascript: protocol');
-    changed = true;
-  }
-
-  // Remove data: URLs (can be used for XSS)
-  const dataUrl = /data:text\/html/gi;
-  if (dataUrl.test(sanitized)) {
-    sanitized = sanitized.replace(dataUrl, '');
-    removedPatterns.push('data URLs');
-    changed = true;
-  }
-
-  // Remove style tags
-  const stylePattern = /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
-  if (stylePattern.test(sanitized)) {
-    sanitized = sanitized.replace(stylePattern, '');
-    removedPatterns.push('style tags');
-    changed = true;
-  }
-
-  // Remove iframe tags
-  const iframePattern = /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi;
-  if (iframePattern.test(sanitized)) {
-    sanitized = sanitized.replace(iframePattern, '');
-    removedPatterns.push('iframe tags');
-    changed = true;
-  }
-
-  // Strip disallowed tags
-  const tagPattern = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
-  sanitized = sanitized.replace(tagPattern, (match, tag) => {
-    if (allowedTags.includes(tag.toLowerCase())) {
-      return match;
-    }
-    removedPatterns.push(`<${tag}> tag`);
-    changed = true;
-    return '';
-  });
+  sanitized = sanitized
+    .split(TAG_OPEN)
+    .join('<')
+    .split(TAG_CLOSE)
+    .join('>');
 
   return { sanitized, changed, removedPatterns, warnings };
+}
+
+/**
+ * Placeholders standing in for the angle brackets of approved tags.
+ *
+ * They use characters from a Unicode private use area so that no input can
+ * contain them, letting the stray-bracket escape run without also escaping
+ * the markup we just decided to keep.
+ */
+const TAG_OPEN = '';
+const TAG_CLOSE = '';
+
+/** Maximum re-sanitization passes before giving up on reaching a fixpoint. */
+const MAX_SANITIZE_PASSES = 10;
+
+/** Attributes kept on allowed tags, keyed by tag name. */
+const ALLOWED_ATTRIBUTES: Record<string, readonly string[]> = {
+  a: ['href', 'title'],
+};
+
+/** URL schemes permitted in an href. */
+const SAFE_URL_SCHEMES = ['http:', 'https:', 'mailto:'];
+
+/**
+ * Rebuild the attribute list of an allowed tag, keeping only safe attributes.
+ *
+ * @param tag - Lowercased tag name
+ * @param rawAttrs - Raw attribute text captured from the source tag
+ * @param noteRemoval - Callback invoked with a description of what was dropped
+ * @returns Serialized safe attributes, or an empty string if none survive
+ */
+function collectSafeAttributes(
+  tag: string,
+  rawAttrs: string,
+  noteRemoval: (pattern: string) => void
+): string {
+  const permitted = ALLOWED_ATTRIBUTES[tag];
+  if (!permitted || !rawAttrs.trim()) {
+    if (rawAttrs.trim()) noteRemoval('tag attributes');
+    return '';
+  }
+
+  const attrPattern = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
+  const kept: string[] = [];
+
+  for (const match of rawAttrs.matchAll(attrPattern)) {
+    const name = match[1].toLowerCase();
+    const value = match[2] ?? match[3] ?? match[4] ?? '';
+
+    if (!permitted.includes(name)) {
+      noteRemoval(name.startsWith('on') ? 'event handlers' : 'tag attributes');
+      continue;
+    }
+    if (name === 'href' && !isSafeURL(value)) {
+      noteRemoval('unsafe URL scheme');
+      continue;
+    }
+    kept.push(`${name}="${escapeAttributeValue(value)}"`);
+  }
+
+  return kept.join(' ');
+}
+
+/**
+ * Report whether a URL uses a scheme that cannot execute script.
+ *
+ * Decodes HTML entities and strips whitespace first: browsers accept
+ * `jav&#x09;ascript:alert(1)` as the javascript: scheme, so a plain substring
+ * check for "javascript:" misses it.
+ *
+ * @param value - Raw attribute value
+ * @returns True if the URL is relative or uses an allowed scheme
+ */
+function isSafeURL(value: string): boolean {
+  const decoded = value
+    .replace(/&#x([0-9a-f]+);?/gi, (_m, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);?/g, (_m, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/[\s\u0000-\u0020\u007f]/g, '');
+
+  const scheme = decoded.match(/^([a-z][a-z0-9+.-]*):/i);
+  if (!scheme) return true; // Relative URL, no scheme to abuse.
+  return SAFE_URL_SCHEMES.includes(scheme[1].toLowerCase() + ':');
+}
+
+/**
+ * Escape a value for safe interpolation into a double-quoted attribute.
+ *
+ * @param value - Raw attribute value
+ * @returns Value with quote and angle-bracket characters escaped
+ */
+function escapeAttributeValue(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /**
@@ -424,10 +525,13 @@ export function sanitizeInput(
 export class RateLimiter {
   private requests = new Map<string, number[]>();
 
-  constructor(
-    private maxRequests: number,
-    private windowMs: number
-  ) {}
+  private readonly maxRequests: number;
+  private readonly windowMs: number;
+
+  constructor(maxRequests: number, windowMs: number) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+  }
 
   /**
    * Check if request should be allowed.
