@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey } from '@/lib/auth'
 import { repurposeContent } from '@/lib/openai'
+import type { RepurposeOutput } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TIER_LIMITS } from '@/lib/constants'
 import type { SubscriptionTier } from '@/lib/constants'
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Get current month
     const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
 
-    // Check/create usage record
+    // Check current usage
     const { data: usageData } = await supabase
       .from('usage')
       .select('requests_count')
@@ -32,10 +33,16 @@ export async function POST(request: NextRequest) {
       .single()
 
     const currentUsage = usageData?.requests_count || 0
-    const tier = (user.subscription_tier || 'free') as SubscriptionTier
+
+    // An unrecognised tier used to index TIER_LIMITS to undefined, and
+    // `count >= undefined` is false, so a bad tier string granted unlimited
+    // requests. Fall back to the free limit instead of trusting the cast.
+    const rawTier = user.subscription_tier || 'free'
+    const tier = (rawTier in TIER_LIMITS ? rawTier : 'free') as SubscriptionTier
     const limit = TIER_LIMITS[tier]
 
-    // Check rate limit
+    // Cheap early rejection. This read is racy on its own, which is why the
+    // quota is actually reserved atomically further down.
     if (currentUsage >= limit) {
       return NextResponse.json(
         {
@@ -152,25 +159,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Call OpenAI
-    const result = await repurposeContent({
-      content: textContent,
-      platforms,
-      tone,
-    })
+    // Reserve one request before doing the billable work. consume_request
+    // folds the read, the limit check, and the increment into one atomic
+    // statement; the previous read-then-upsert let concurrent requests all
+    // read the same count, write back count + 1, and overshoot the limit.
+    const { data: reservedCount, error: reserveError } = await supabase.rpc(
+      'consume_request',
+      {
+        p_user_id: user.id,
+        p_month: currentMonth,
+        p_limit: limit,
+      }
+    )
 
-    // Update usage
-    await supabase
-      .from('usage')
-      .upsert(
+    if (reserveError) {
+      console.error('Usage reservation failed:', reserveError.message)
+      return NextResponse.json(
         {
-          user_id: user.id,
-          month: currentMonth,
-          requests_count: currentUsage + 1,
-          updated_at: new Date().toISOString(),
+          error: {
+            code: 'internal_error',
+            message: 'An unexpected error occurred. Please try again.',
+          },
         },
-        { onConflict: 'user_id,month' }
+        { status: 500 }
       )
+    }
+
+    // A null count means the limit was already reached, so nothing was taken.
+    if (reservedCount === null) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'rate_limit_exceeded',
+            message: `Monthly request limit (${limit}) reached. Upgrade at ${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+          },
+        },
+        { status: 429 }
+      )
+    }
+
+    const requestsUsed = reservedCount as number
+
+    // Call the model
+    let result: RepurposeOutput
+    try {
+      result = await repurposeContent({
+        content: textContent,
+        platforms,
+        tone,
+      })
+    } catch (generationError) {
+      // Hand the reservation back so an upstream outage does not burn quota.
+      const { error: releaseError } = await supabase.rpc('release_request', {
+        p_user_id: user.id,
+        p_month: currentMonth,
+      })
+      if (releaseError) {
+        console.error('Usage release failed:', releaseError.message)
+      }
+      throw generationError
+    }
 
     // Generate response ID
     const responseId = `rp_${Date.now().toString(36)}`
@@ -179,7 +227,7 @@ export async function POST(request: NextRequest) {
       id: responseId,
       ...result,
       usage: {
-        requests_used: currentUsage + 1,
+        requests_used: requestsUsed,
         requests_limit: limit,
       },
     })
