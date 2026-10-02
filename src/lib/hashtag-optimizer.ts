@@ -283,7 +283,7 @@ function applyPlatformStrategy(
   });
 
   // Take top N hashtags
-  const selected = sorted.slice(0, Math.min(count, config.max));
+  const selected = sorted.slice(0, Math.max(0, Math.min(count, config.max)));
 
   // Ensure diversity (not all high-competition or all low-competition)
   return ensureDiversity(selected);
