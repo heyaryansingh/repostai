@@ -93,15 +93,13 @@ export class ContentCache<T = any> {
     const size = this.estimateSize(value);
     const entryTTL = ttl || this.config.defaultTTL;
 
+    // Remove old entry first so its size is not counted against the new one
+    // (otherwise overwriting a key evicts unrelated entries needlessly)
+    this.delete(key);
+
     // Evict if necessary to make space
     while (this.stats.totalSize + size > this.config.maxSize && this.cache.size > 0) {
       this.evictLRU();
-    }
-
-    // Remove old entry if exists
-    if (this.cache.has(key)) {
-      const oldEntry = this.cache.get(key)!;
-      this.stats.totalSize -= oldEntry.size;
     }
 
     const entry: CacheEntry<T> = {
