@@ -240,6 +240,20 @@ function calculateConfidenceInterval(
 export function analyzeResults(test: ABTest, metrics: VariantMetrics[]): TestResults {
   const { targetMetric, minSampleSize, confidenceLevel } = test;
 
+  if (metrics.length === 0) {
+    return {
+      testId: test.id,
+      winner: null,
+      isSignificant: false,
+      confidence: 0,
+      pValue: 1,
+      improvement: 0,
+      variantStats: [],
+      sampleSizeReached: false,
+      recommendation: 'No variant metrics provided yet. Continue test.',
+    };
+  }
+
   // Calculate stats for each variant
   const variantStats: VariantStats[] = metrics.map((m, i) => {
     const metric = calculateMetric(m, targetMetric);
@@ -346,7 +360,8 @@ export function estimateTestDuration(
   variants: number = 2
 ): { days: number; impressionsNeeded: number } {
   const totalNeeded = requiredSampleSize * variants;
-  const days = Math.ceil(totalNeeded / dailyImpressions);
+  // Non-positive traffic would yield Infinity/NaN days
+  const days = dailyImpressions > 0 ? Math.ceil(totalNeeded / dailyImpressions) : Infinity;
 
   return {
     days,
