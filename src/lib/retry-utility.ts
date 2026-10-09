@@ -196,8 +196,11 @@ export class CircuitBreaker<T> {
       this.failureCount++;
       this.lastFailureTime = Date.now();
 
-      // Open circuit if threshold exceeded
-      if (this.failureCount >= this.options.failureThreshold!) {
+      // A failed half-open probe re-opens immediately; otherwise open on threshold
+      if (
+        this.state === 'half-open' ||
+        this.failureCount >= this.options.failureThreshold!
+      ) {
         this.state = 'open';
       }
 
