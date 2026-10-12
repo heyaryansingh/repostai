@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
     // Parse request body with validation
     let body: any
     try {
-      body = await request.json()
+      // A literal `null` body parses fine but would crash the destructuring below.
+      body = (await request.json()) ?? {}
     } catch (parseError) {
       return NextResponse.json(
         {
