@@ -118,10 +118,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const subscription = event.data.object as Stripe.Subscription
       customerId = subscription.customer as string
 
+      // Trials are paid access; past_due keeps the tier during Stripe's retry
+      // grace period; unpaid/canceled/incomplete/paused lose the paid tier
+      // (only the tier gates usage, so leaving it set would grant free access).
+      const status = subscription.status
+      const live = status === 'active' || status === 'trialing'
+
       update = {
         stripe_customer_id: customerId,
-        subscription_tier: tierForPrice(subscription.items.data[0].price.id),
-        subscription_status: subscription.status === 'active' ? 'active' : 'past_due',
+        subscription_tier:
+          live || status === 'past_due'
+            ? tierForPrice(subscription.items.data[0].price.id)
+            : 'free',
+        subscription_status: live
+          ? 'active'
+          : status === 'canceled' || status === 'incomplete_expired'
+            ? 'canceled'
+            : 'past_due',
       }
 
       break
