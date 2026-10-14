@@ -337,11 +337,15 @@ export function calculateRequiredSampleSize(
   const p1 = baselineRate / 100;
   const p2 = p1 * (1 + minDetectableEffect / 100);
 
-  // Pooled standard deviation
-  const pooledVar = p1 * (1 - p1) + p2 * (1 - p2);
+  // No detectable difference means no finite sample can detect it
+  if (p2 === p1) return Infinity;
+
+  // Sum of the two arms' Bernoulli variances (unpooled two-proportion test);
+  // this already covers both arms, so there is no extra factor of 2
+  const sumVar = p1 * (1 - p1) + p2 * (1 - p2);
 
   // Sample size formula
-  const n = (2 * pooledVar * Math.pow(zAlpha + zBeta, 2)) / Math.pow(p2 - p1, 2);
+  const n = (sumVar * Math.pow(zAlpha + zBeta, 2)) / Math.pow(p2 - p1, 2);
 
   return Math.ceil(n);
 }
@@ -522,7 +526,8 @@ function sampleGamma(alpha: number): number {
  * Generate standard normal random variable (Box-Muller).
  */
 function normalRandom(): number {
-  const u1 = Math.random();
+  // 1 - random() is in (0, 1], so log(u1) never hits -Infinity
+  const u1 = 1 - Math.random();
   const u2 = Math.random();
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
