@@ -17,8 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { TIER_LIMITS } from '@/lib/constants'
-import type { SubscriptionTier } from '@/lib/constants'
+import { TIER_LIMITS, resolveTier } from '@/lib/constants'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +60,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq('month', currentMonth)
       .single()
 
-    const tier = (user.subscription_tier || 'free') as SubscriptionTier
+    const tier = resolveTier(user.subscription_tier)
 
     return NextResponse.json({
       tier,

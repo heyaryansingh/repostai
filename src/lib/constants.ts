@@ -42,3 +42,13 @@ export const TIER_NAMES = {
  * @typedef {'free' | 'starter' | 'pro' | 'scale'} SubscriptionTier
  */
 export type SubscriptionTier = keyof typeof TIER_LIMITS
+
+/**
+ * Resolve a stored tier string to a known tier, falling back to 'free'.
+ * Uses an own-property check so inherited keys like "toString" don't pass.
+ */
+export function resolveTier(raw: string | null | undefined): SubscriptionTier {
+  return raw && Object.prototype.hasOwnProperty.call(TIER_LIMITS, raw)
+    ? (raw as SubscriptionTier)
+    : 'free'
+}

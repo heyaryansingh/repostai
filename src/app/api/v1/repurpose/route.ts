@@ -3,8 +3,7 @@ import { validateApiKey } from '@/lib/auth'
 import { repurposeContent } from '@/lib/openai'
 import type { RepurposeOutput } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { TIER_LIMITS } from '@/lib/constants'
-import type { SubscriptionTier } from '@/lib/constants'
+import { TIER_LIMITS, resolveTier } from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,8 +36,7 @@ export async function POST(request: NextRequest) {
     // An unrecognised tier used to index TIER_LIMITS to undefined, and
     // `count >= undefined` is false, so a bad tier string granted unlimited
     // requests. Fall back to the free limit instead of trusting the cast.
-    const rawTier = user.subscription_tier || 'free'
-    const tier = (rawTier in TIER_LIMITS ? rawTier : 'free') as SubscriptionTier
+    const tier = resolveTier(user.subscription_tier)
     const limit = TIER_LIMITS[tier]
 
     // Cheap early rejection. This read is racy on its own, which is why the
