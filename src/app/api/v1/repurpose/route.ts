@@ -78,12 +78,12 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate platforms array
-    if (!Array.isArray(platforms)) {
+    if (!Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json(
         {
           error: {
             code: 'invalid_platforms',
-            message: 'platforms must be an array of strings',
+            message: 'platforms must be a non-empty array of strings',
           },
         },
         { status: 400 }
