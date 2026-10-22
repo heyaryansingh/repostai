@@ -48,7 +48,10 @@ const PLATFORM_HALF_LIFE_DAYS: Record<string, number> = {
 const DEFAULT_HALF_LIFE_DAYS = 7;
 
 function getHalfLifeDays(platform: string): number {
-  return PLATFORM_HALF_LIFE_DAYS[platform.toLowerCase()] ?? DEFAULT_HALF_LIFE_DAYS;
+  const key = platform.toLowerCase();
+  return Object.prototype.hasOwnProperty.call(PLATFORM_HALF_LIFE_DAYS, key)
+    ? PLATFORM_HALF_LIFE_DAYS[key]
+    : DEFAULT_HALF_LIFE_DAYS;
 }
 
 /**
