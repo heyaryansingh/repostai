@@ -9,8 +9,18 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 /** Supported social media platforms for content repurposing */
 export type Platform = 'twitter' | 'linkedin' | 'instagram' | 'facebook' | 'threads' | 'tiktok' | 'summary'
 
+/** Prompt instruction for each supported tone; the API validates against these keys. */
+export const TONE_INSTRUCTIONS = {
+  professional: 'Use a professional, authoritative tone.',
+  casual: 'Use a casual, conversational tone.',
+  witty: 'Use a witty, clever tone with subtle humor.',
+  enthusiastic: 'Use an enthusiastic, energetic tone.',
+  informative: 'Use a clear, informative, educational tone.',
+  humorous: 'Use a light-hearted, humorous tone.',
+} as const
+
 /** Supported content tone options */
-export type ToneOption = 'professional' | 'casual' | 'witty'
+export type ToneOption = keyof typeof TONE_INSTRUCTIONS
 
 /** Input parameters for content repurposing */
 export interface RepurposeInput {
@@ -60,13 +70,8 @@ export async function repurposeContent(input: RepurposeInput): Promise<Repurpose
 
   const { content, platforms, tone } = input
 
-  const toneInstructions: Record<string, string> = {
-    professional: 'Use a professional, authoritative tone.',
-    casual: 'Use a casual, conversational tone.',
-    witty: 'Use a witty, clever tone with subtle humor.',
-  }
-
-  const platformInstructions = platforms.map(p => {
+  // Duplicate platforms would repeat the same instruction in the prompt.
+  const platformInstructions = Array.from(new Set(platforms)).map(p => {
     switch (p) {
       case 'twitter':
         return 'Create a Twitter thread (5-10 tweets, each under 280 chars)'
@@ -83,7 +88,7 @@ export async function repurposeContent(input: RepurposeInput): Promise<Repurpose
 
   const prompt = `${SYSTEM_PROMPT}
 
-${toneInstructions[tone]}
+${TONE_INSTRUCTIONS[tone]}
 
 Please repurpose the following content:
 

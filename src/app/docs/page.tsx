@@ -101,7 +101,7 @@ export default function DocsPage() {
                   <td className="py-2"><code>tone</code></td>
                   <td>string</td>
                   <td>No</td>
-                  <td>&quot;professional&quot; | &quot;casual&quot; | &quot;witty&quot;</td>
+                  <td>&quot;professional&quot; | &quot;casual&quot; | &quot;witty&quot; | &quot;enthusiastic&quot; | &quot;informative&quot; | &quot;humorous&quot;</td>
                 </tr>
               </tbody>
             </table>

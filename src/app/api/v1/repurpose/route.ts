@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey } from '@/lib/auth'
-import { repurposeContent } from '@/lib/openai'
+import { repurposeContent, TONE_INSTRUCTIONS } from '@/lib/openai'
 import type { RepurposeOutput } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TIER_LIMITS, resolveTier } from '@/lib/constants'
@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate tone
-    const validTones = ['professional', 'casual', 'enthusiastic', 'informative', 'humorous']
-    if (!validTones.includes(tone)) {
+    const validTones = Object.keys(TONE_INSTRUCTIONS)
+    if (!Object.hasOwn(TONE_INSTRUCTIONS, tone)) {
       return NextResponse.json(
         {
           error: {
