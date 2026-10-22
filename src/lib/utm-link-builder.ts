@@ -56,7 +56,7 @@ export function validateUtmParams(params: UtmParams): UtmValidation {
 
 /**
  * Build a UTM-tagged URL from a base URL and campaign parameters.
- * Existing query parameters on the base URL are preserved.
+ * Non-UTM query parameters on the base URL are preserved; old UTM tags are replaced.
  */
 export function buildUtmUrl(baseUrl: string, params: UtmParams): string {
   const validation = validateUtmParams(params);
@@ -65,6 +65,12 @@ export function buildUtmUrl(baseUrl: string, params: UtmParams): string {
   }
 
   const url = new URL(baseUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`UTM links must be http(s), got ${url.protocol}`);
+  }
+  // Drop any UTM tags already on the URL so re-tagging a link never mixes
+  // the old campaign's utm_term/utm_content into the new one.
+  Object.values(UTM_KEYS).forEach((k) => url.searchParams.delete(k));
   (Object.keys(UTM_KEYS) as Array<keyof UtmParams>).forEach((key) => {
     const value = params[key];
     if (value) {
