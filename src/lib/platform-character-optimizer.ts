@@ -291,8 +291,19 @@ export function optimizeForPlatform(
     };
   }
 
+  // Drop hashtags over the platform limit from the body; otherwise they survive
+  // truncation alongside the re-appended limited set and exceed the limit.
+  const body = hashtags
+    .slice(maxHashtags)
+    .reduce(
+      (t, tag) => t.replace(new RegExp(`${tag}(?!\\w)`, "g"), ""),
+      text
+    )
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+
   // Perform smart truncation
-  const optimized = smartTruncate(text, limits.max, {
+  const optimized = smartTruncate(body, limits.max, {
     hashtags: limitedHashtags,
     cta: cta || undefined,
     urls,
