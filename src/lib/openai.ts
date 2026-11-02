@@ -40,6 +40,8 @@ export interface RepurposeOutput {
   linkedin: string
   /** Instagram caption with hashtags */
   instagram: string
+  /** Facebook post; only populated when the facebook platform is requested */
+  facebook?: string
   /** Brief 2-3 sentence summary */
   summary: string
   /** Memorable quotes extracted from the content */
@@ -79,6 +81,8 @@ export async function repurposeContent(input: RepurposeInput): Promise<Repurpose
         return 'Create a LinkedIn post (professional, with line breaks)'
       case 'instagram':
         return 'Create an Instagram caption (engaging, with 5-10 hashtags)'
+      case 'facebook':
+        return 'Create a Facebook post (conversational, with a question to prompt comments)'
       case 'summary':
         return 'Create a 2-3 sentence summary'
       default:
@@ -105,6 +109,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
   "twitter_thread": ["tweet 1", "tweet 2", ...],
   "linkedin": "linkedin post content",
   "instagram": "instagram caption with #hashtags",
+  "facebook": "facebook post content",
   "summary": "2-3 sentence summary",
   "quotes": ["quote 1", "quote 2"]
 }`
@@ -131,6 +136,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
     twitter_thread: parsed.twitter_thread || [],
     linkedin: parsed.linkedin || '',
     instagram: parsed.instagram || '',
+    ...(platforms.includes('facebook') && { facebook: parsed.facebook || '' }),
     summary: parsed.summary || '',
     quotes: parsed.quotes || [],
   }
