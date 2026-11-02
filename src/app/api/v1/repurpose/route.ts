@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (typeof textContent !== 'string' || textContent.length < 100) {
+    if (typeof textContent !== 'string' || textContent.trim().length < 100) {
       return NextResponse.json(
         {
           error: {
