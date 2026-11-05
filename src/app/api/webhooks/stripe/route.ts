@@ -76,7 +76,10 @@ function tierForPrice(priceId: string): string {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text()
-  const signature = request.headers.get('stripe-signature')!
+  const signature = request.headers.get('stripe-signature')
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+  }
 
   let event: Stripe.Event
 
@@ -99,8 +102,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
+      // One-time payments carry no subscription: retrieving null threw, the 500
+      // made Stripe retry the event forever. Nothing to provision, just ack.
+      if (session.mode !== 'subscription' || !session.subscription) break
       customerId = session.customer as string
-      const subscriptionId = session.subscription as string
+      const subscriptionId =
+        typeof session.subscription === 'string' ? session.subscription : session.subscription.id
 
       // Get subscription details
       const subscription = await stripe.subscriptions.retrieve(subscriptionId)
