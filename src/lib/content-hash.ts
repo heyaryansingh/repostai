@@ -13,11 +13,10 @@ export interface ContentHash {
 /**
  * Generate a simple hash from content for deduplication
  */
+const normalize = (c: string) => c.toLowerCase().replace(/\s+/g, ' ').trim();
+
 export function hashContent(content: string): string {
-  const normalized = content
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+  const normalized = normalize(content);
 
   let hash = 0;
   for (let i = 0; i < normalized.length; i++) {
@@ -55,7 +54,9 @@ export function isDuplicate(
   const newHash = hashContent(newContent);
 
   // Check exact hash match
-  const exactMatch = cachedHashes.find(h => h.hash === newHash);
+  // 32-bit hash can collide, so confirm the normalized text matches too
+  const norm = normalize(newContent);
+  const exactMatch = cachedHashes.find(h => h.hash === newHash && normalize(h.content) === norm);
   if (exactMatch) {
     return { isDuplicate: true, match: exactMatch };
   }
