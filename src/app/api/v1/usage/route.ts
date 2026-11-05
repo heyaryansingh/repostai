@@ -33,7 +33,9 @@ export const dynamic = 'force-dynamic'
  *   "tier": "pro",
  *   "requests_used": 150,
  *   "requests_limit": 1000,
- *   "billing_period": "2026-04"
+ *   "requests_remaining": 850,
+ *   "billing_period": "2026-04",
+ *   "resets_at": "2026-05-01T00:00:00.000Z"
  * }
  * ```
  */
@@ -61,12 +63,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .single()
 
     const tier = resolveTier(user.subscription_tier)
+    const used = usageData?.requests_count || 0
+    const limit = TIER_LIMITS[tier]
+    const now = new Date()
+    // Quota is keyed by UTC month, so it resets at 00:00 UTC on the 1st
+    const resetsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
 
     return NextResponse.json({
       tier,
-      requests_used: usageData?.requests_count || 0,
-      requests_limit: TIER_LIMITS[tier],
+      requests_used: used,
+      requests_limit: limit,
+      requests_remaining: Math.max(0, limit - used),
       billing_period: currentMonth,
+      resets_at: resetsAt.toISOString(),
     })
   } catch (error) {
     console.error('Usage error:', error)

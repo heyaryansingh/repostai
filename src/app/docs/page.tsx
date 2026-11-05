@@ -115,7 +115,9 @@ export default function DocsPage() {
   "tier": "free",
   "requests_used": 5,
   "requests_limit": 10,
-  "billing_period": "2024-01"
+  "requests_remaining": 5,
+  "billing_period": "2024-01",
+  "resets_at": "2024-02-01T00:00:00.000Z"
 }`}
           </pre>
 
