@@ -128,7 +128,8 @@ class TokenBucket {
   private refill(): void {
     const now = Date.now();
     const timePassed = now - this.lastRefill;
-    const tokensToAdd = timePassed * this.refillRate;
+    // 0 * Infinity (unlimited tier) is NaN and would poison the bucket
+    const tokensToAdd = timePassed > 0 ? timePassed * this.refillRate : 0;
 
     this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
     this.lastRefill = now;
