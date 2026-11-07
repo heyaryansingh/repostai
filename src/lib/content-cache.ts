@@ -97,6 +97,10 @@ export class ContentCache<T = any> {
     // (otherwise overwriting a key evicts unrelated entries needlessly)
     this.delete(key);
 
+    // An entry bigger than the whole cache can never fit; storing it would
+    // evict everything else and leave totalSize above maxSize.
+    if (size > this.config.maxSize) return;
+
     // Evict if necessary to make space
     while (this.stats.totalSize + size > this.config.maxSize && this.cache.size > 0) {
       this.evictLRU();
