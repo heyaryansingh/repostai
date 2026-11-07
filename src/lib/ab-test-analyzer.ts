@@ -176,7 +176,9 @@ function calculateMetric(
  * Calculate standard error for a proportion.
  */
 function calculateStandardError(proportion: number, sampleSize: number): number {
-  if (sampleSize === 0) return 0;
+  // Only defined for a percentage in [0, 100]; revenue or >1 engagement per
+  // impression made the radicand negative and the SE NaN.
+  if (sampleSize <= 0 || !(proportion >= 0 && proportion <= 100)) return 0;
   return Math.sqrt((proportion * (100 - proportion)) / sampleSize);
 }
 
@@ -186,6 +188,9 @@ function calculateStandardError(proportion: number, sampleSize: number): number 
 function calculateZScore(p1: number, p2: number, n1: number, n2: number): number {
   // Pooled proportion
   const pooled = ((p1 / 100) * n1 + (p2 / 100) * n2) / (n1 + n2);
+  // Two-proportion z-test needs a pooled rate strictly inside (0, 1);
+  // otherwise (revenue, rates > 100%) the SE was NaN and so was the p-value.
+  if (!(pooled > 0 && pooled < 1)) return 0;
   const se = Math.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2));
 
   if (se === 0) return 0;
@@ -284,7 +289,12 @@ export function analyzeResults(test: ABTest, metrics: VariantMetrics[]): TestRes
   let pValue = 1;
   let improvement = 0;
 
-  if (best.variantId !== control.variantId && control.sampleSize > 0 && best.sampleSize > 0) {
+  if (
+    targetMetric !== 'revenue' &&
+    best.variantId !== control.variantId &&
+    control.sampleSize > 0 &&
+    best.sampleSize > 0
+  ) {
     const zScore = calculateZScore(best.metric, control.metric, best.sampleSize, control.sampleSize);
     pValue = zToPValue(zScore);
     isSignificant = pValue < (1 - confidenceLevel);
@@ -303,7 +313,9 @@ export function analyzeResults(test: ABTest, metrics: VariantMetrics[]): TestRes
 
   return {
     testId: test.id,
-    winner: isSignificant ? best.variantId : null,
+    // No winner before the planned sample size: stopping on an early
+    // significant peek inflates the false-positive rate.
+    winner: isSignificant && sampleSizeReached ? best.variantId : null,
     isSignificant,
     confidence: 1 - pValue,
     pValue,
