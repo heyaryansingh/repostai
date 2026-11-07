@@ -174,9 +174,10 @@ function groupByWeek(calendar: CalendarEntry[]): CalendarEntry[][] {
  * Get week identifier for a date
  */
 function getWeekKey(date: Date): string {
-  const year = date.getFullYear();
-  const week = getWeekNumber(date);
-  return `${year}-W${week}`;
+  // ISO week-year, not calendar year: Dec 29-31 can belong to week 1 of next year
+  const d = new Date(date);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  return `${d.getFullYear()}-W${getWeekNumber(date)}`;
 }
 
 /**
