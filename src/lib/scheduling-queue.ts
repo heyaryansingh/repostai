@@ -326,8 +326,9 @@ export class SchedulingQueue {
 
     post.status = 'failed';
     post.updatedAt = new Date();
-    if (error && post.metadata) {
-      post.metadata.tags = [...(post.metadata.tags || []), `error:${error}`];
+    if (error) {
+      const metadata = post.metadata ?? (post.metadata = {});
+      metadata.tags = [...(metadata.tags || []), `error:${error}`];
     }
     return true;
   }
