@@ -11,3 +11,8 @@ export function parseModelJson(text: string): Record<string, unknown> {
   }
   return JSON.parse(text.slice(start, end + 1))
 }
+
+/** True when every field of a coerced model result is an empty string/array. */
+export function isEmptyOutput(out: Record<string, unknown>): boolean {
+  return Object.values(out).every(v => (Array.isArray(v) ? v.length === 0 : v === ''))
+}

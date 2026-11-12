@@ -5,7 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { parseModelJson } from './parse-model-json'
+import { parseModelJson, isEmptyOutput } from './parse-model-json'
 
 /** Supported social media platforms for content repurposing */
 export type Platform = 'twitter' | 'linkedin' | 'instagram' | 'facebook' | 'threads' | 'tiktok' | 'summary'
@@ -126,7 +126,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' && v ? [v] : [])
 
-  return {
+  const output: RepurposeOutput = {
     twitter_thread: strs(parsed.twitter_thread),
     linkedin: str(parsed.linkedin),
     instagram: str(parsed.instagram),
@@ -134,4 +134,9 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
     summary: str(parsed.summary),
     quotes: strs(parsed.quotes),
   }
+
+  // Valid JSON with none of the expected keys would return 200 and burn quota;
+  // throwing sends the route down its release_request path instead.
+  if (isEmptyOutput({ ...output })) throw new Error('Model response contained no usable content')
+  return output
 }
