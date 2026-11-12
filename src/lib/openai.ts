@@ -121,12 +121,17 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
 
   const parsed: any = parseModelJson(text)
 
+  // Model output is untrusted: a string where an array belongs (or vice versa)
+  // would reach API clients as the wrong type.
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' && v ? [v] : [])
+
   return {
-    twitter_thread: parsed.twitter_thread || [],
-    linkedin: parsed.linkedin || '',
-    instagram: parsed.instagram || '',
-    ...(platforms.includes('facebook') && { facebook: parsed.facebook || '' }),
-    summary: parsed.summary || '',
-    quotes: parsed.quotes || [],
+    twitter_thread: strs(parsed.twitter_thread),
+    linkedin: str(parsed.linkedin),
+    instagram: str(parsed.instagram),
+    ...(platforms.includes('facebook') && { facebook: str(parsed.facebook) }),
+    summary: str(parsed.summary),
+    quotes: strs(parsed.quotes),
   }
 }
