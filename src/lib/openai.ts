@@ -5,6 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { parseModelJson } from './parse-model-json'
 
 /** Supported social media platforms for content repurposing */
 export type Platform = 'twitter' | 'linkedin' | 'instagram' | 'facebook' | 'threads' | 'tiktok' | 'summary'
@@ -118,19 +119,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
   const response = result.response
   const text = response.text()
 
-  // Clean up the response - remove markdown code blocks if present
-  let cleanedText = text.trim()
-  if (cleanedText.startsWith('```json')) {
-    cleanedText = cleanedText.slice(7)
-  } else if (cleanedText.startsWith('```')) {
-    cleanedText = cleanedText.slice(3)
-  }
-  if (cleanedText.endsWith('```')) {
-    cleanedText = cleanedText.slice(0, -3)
-  }
-  cleanedText = cleanedText.trim()
-
-  const parsed = JSON.parse(cleanedText)
+  const parsed: any = parseModelJson(text)
 
   return {
     twitter_thread: parsed.twitter_thread || [],
