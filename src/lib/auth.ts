@@ -19,7 +19,8 @@ export interface AuthResult {
 }
 
 export async function validateApiKey(authHeader: string | null): Promise<AuthResult> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  // The auth scheme is case-insensitive (RFC 7235), so accept `bearer`/`BEARER` too.
+  if (!authHeader || !/^bearer\s/i.test(authHeader)) {
     return {
       success: false,
       error: {
@@ -29,7 +30,7 @@ export async function validateApiKey(authHeader: string | null): Promise<AuthRes
     }
   }
 
-  const apiKey = authHeader.replace('Bearer ', '')
+  const apiKey = authHeader.replace(/^bearer\s+/i, '').trim()
 
   if (!apiKey.startsWith('rp_live_')) {
     return {
