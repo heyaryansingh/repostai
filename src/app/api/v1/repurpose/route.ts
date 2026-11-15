@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Validate tone
     const validTones = Object.keys(TONE_INSTRUCTIONS)
-    if (!Object.hasOwn(TONE_INSTRUCTIONS, tone)) {
+    if (typeof tone !== 'string' || !Object.hasOwn(TONE_INSTRUCTIONS, tone)) {
       return NextResponse.json(
         {
           error: {
