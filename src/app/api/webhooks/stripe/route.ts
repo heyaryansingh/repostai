@@ -66,6 +66,36 @@ function tierForPrice(priceId: string): string {
 }
 
 /**
+ * Builds the user-record update for a subscription's current state.
+ *
+ * Trials are paid access; past_due keeps the tier during Stripe's retry grace
+ * period; unpaid/canceled/incomplete/paused lose the paid tier (only the tier
+ * gates usage, so leaving it set would grant free access). Shared by checkout
+ * and update events so a checkout whose first payment is still pending
+ * (subscription `incomplete`) is not provisioned as active.
+ */
+function subscriptionUpdate(
+  subscription: Stripe.Subscription,
+  customerId: string
+): Record<string, string> {
+  const status = subscription.status
+  const live = status === 'active' || status === 'trialing'
+
+  return {
+    stripe_customer_id: customerId,
+    subscription_tier:
+      live || status === 'past_due'
+        ? tierForPrice(subscription.items.data[0].price.id)
+        : 'free',
+    subscription_status: live
+      ? 'active'
+      : status === 'canceled' || status === 'incomplete_expired'
+        ? 'canceled'
+        : 'past_due',
+  }
+}
+
+/**
  * POST /api/webhooks/stripe - Handle Stripe webhook events.
  *
  * Processes subscription events and updates user records in Supabase.
@@ -111,12 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       // Get subscription details
       const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-
-      update = {
-        stripe_customer_id: customerId,
-        subscription_tier: tierForPrice(subscription.items.data[0].price.id),
-        subscription_status: 'active',
-      }
+      update = subscriptionUpdate(subscription, customerId)
 
       break
     }
@@ -124,25 +149,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription
       customerId = subscription.customer as string
-
-      // Trials are paid access; past_due keeps the tier during Stripe's retry
-      // grace period; unpaid/canceled/incomplete/paused lose the paid tier
-      // (only the tier gates usage, so leaving it set would grant free access).
-      const status = subscription.status
-      const live = status === 'active' || status === 'trialing'
-
-      update = {
-        stripe_customer_id: customerId,
-        subscription_tier:
-          live || status === 'past_due'
-            ? tierForPrice(subscription.items.data[0].price.id)
-            : 'free',
-        subscription_status: live
-          ? 'active'
-          : status === 'canceled' || status === 'incomplete_expired'
-            ? 'canceled'
-            : 'past_due',
-      }
+      update = subscriptionUpdate(subscription, customerId)
 
       break
     }
